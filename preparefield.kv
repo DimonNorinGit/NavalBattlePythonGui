@@ -1,0 +1,14 @@
+
+Prepare:
+	id: prepare
+	size:800,600
+	Button:
+		size:400,100
+		pos:0,0
+		text:"Arrange"
+		on_release:if prepare.check_rules():prepare.events_callback(Core.PScreen , Core.p_field.arrange , prepare.data)
+	Button:
+		size:400,100
+		pos:400,0
+		text:"Back"
+		on_release: prepare.events_callback(Core.PScreen ,Core.p_field.back)

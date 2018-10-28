@@ -1,0 +1,20 @@
+#: import Core programdata.Core
+
+<StartMenu>:
+	name:"start_menu"
+	anchor_x:"center"
+	anchor_y:"top"
+	BoxLayout:
+		pos_hint:{"top":0.7}
+		size_hint: 0.5 , 0.7
+		orientation:"vertical"
+		Button:
+			#font_size:50
+			on_release: root.events_callback(Core.StartMenu , Core.start_menu.play)
+			text:"Play"
+		Button:
+			text:"Tools"
+			on_release: root.events_callback(Core.StartMenu , Core.start_menu.tools)
+		Button:
+			text:"Exit"
+			on_release: root.events_callback(Core.StartMenu , Core.start_menu.exit)

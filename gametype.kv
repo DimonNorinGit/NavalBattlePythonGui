@@ -1,0 +1,24 @@
+#: import Core programdata.Core
+
+<GameTypeMenu>:
+	name:"type_menu"
+	anchor_x:"center"
+	anchor_y:"top"
+	BoxLayout:
+		pos_hint:{"top":0.7}
+		size_hint: 0.5 , 0.7
+		orientation:"vertical"
+		Button:
+			text:"Player VS RandomBot"
+			on_release:root.events_callback(Core.TypeMenu , Core.type_menu.PvsRbot)
+
+		Button:
+			text:" Player VS OptimalBot"
+			on_release:root.events_callback(Core.TypeMenu , Core.type_menu.PvsObot)
+	
+		Button:
+			text:"Player vs Player"
+			on_release:root.events_callback(Core.TypeMenu , Core.type_menu.PvsP)
+		Button:
+			text:"Back"
+			on_release: root.events_callback(Core.TypeMenu ,Core.type_menu.Back)
