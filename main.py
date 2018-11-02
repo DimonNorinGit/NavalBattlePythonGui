@@ -9,11 +9,15 @@ from gametype import GameTypeMenu
 from preparefield import PrepareScreen
 from programdata import Core
 
+from gamefield import GameFieldScreen
+
 import sys 
 
 import socket
 
 
+
+#ord() and chr()
 
 from kivy.config import Config
 Config.set('graphics', 'resizable', '0')
@@ -43,32 +47,51 @@ class Program(App):
 
 		self.prepare_screen = PrepareScreen(events_callback=self.events_program)
 
+		self.game_screen = GameFieldScreen(events_callback=self.events_program)
+
 
 		self.screen_manager.add_widget(self.start_menu)
 		self.screen_manager.add_widget(self.type_menu)
 		self.screen_manager.add_widget(self.prepare_screen)
+		self.screen_manager.add_widget(self.game_screen)
+
 
 
 		#game type variables
 		self.isTwoPlayers = False
 		self.isFirstArranged = False
+		self.message_data = None
 
 		return self.screen_manager
 
 
+	def send_data_to_server(self):
+		try:
+			msg = self.message_data
+			self.data_socket = socket.socket()
+			self.data_socket.connect(('localhost' , Core.client.port))
+			self.data_socket.send(bytes( msg, encoding = 'utf-8'))
+			
+		except ConnectionRefusedError:
+			print("Connectio Error")
 
 
-
+	def recive_data_from_server(self):
+		data = self.data_socket.recv(80)# 2 * cell_count - all = ship cells
+		self.data_socket.close()
+		return data
 
 	def events_program(self , *args):
-		print(*args)
 
 		if len(args) == 2:
 			screen , event = args
 		else:
 			screen , event , data = args
-
-
+			for s in data:
+				print(str(ord(s)),end=" ")
+			
+				
+		#data - string of ships coordinates
 		
 
 
@@ -80,32 +103,73 @@ class Program(App):
 			else:
 				sys.exit(0)
 
+
 		elif screen == Core.TypeMenu:
 
-			if event == Core.type_menu.PvsP  :
-				self.screen_manager.current = "prepare_screen"
+			if event == Core.type_menu.PvsP:
+				self.message_data = Core.game_type.PvsP
 				self.isTwoPlayers = True
-			elif event == Core.type_menu.PvsObot:
-				pass
-			elif event == Core.type_menu.PvsRbot:
-				pass
-			elif event == Core.type_menu.ObotvsRbot:
-				pass
+				self.screen_manager.current = "prepare_screen"
+				self.game_screen.left_player = "h"
+				self.game_screen.right_player = "h"
 
+			elif event == Core.type_menu.PvsObot:
+				self.message_data = Core.game_type.PvsObot
+				self.screen_manager.current = "prepare_screen"
+				self.game_screen.left_player = "h"
+				self.game_screen.right_player = "b"
+
+
+			elif event == Core.type_menu.PvsRbot:
+				self.screen_manager.current = "prepare_screen"
+				self.message_data = Core.game_type.PvsRbot
+				self.game_screen.left_player = "h"
+				self.game_screen.right_player = "b"
+
+			elif event == Core.type_menu.ObotvsRbot:
+				self.message_data = Core.game_type.ObotvsRbot
+				self.events_program(Core.PScreen , Core.p_field.botarrange)
+				self.game_screen.left_player = "b"
+				self.game_screen.right_player = "b"
+				
 			elif event == Core.type_menu.Back:
 				self.isTwoPlayers = False
 				self.screen_manager.current = "start_menu"
 				
+
 		elif screen == Core.PScreen:
 			if event == Core.p_field.arrange:
+				if self.isTwoPlayers:
+					if not self.isFirstArranged:
+						self.isFirstArranged = True
+						self.message_data+=data
+						self.prepare_screen.clean()
+					else:
+						self.message_data+=data
+						self.send_data_to_server()
+						#recive data
+						#game_screen.define
+						field_states = self.recive_data_from_server()
+						self.game_screen.define_fields(field_states)
+						self.screen_manager.current = "game_screen"
+						self.game_screen.field_events("start")
 
-				if not self.isFirstArranged:
-					self.isFirstArranged = True
-					self.prepare_screen.clean()
 				else:
-					#some work with server
-					#change_screen to game_screen
-					pass
+					self.message_data+=data
+					self.send_data_to_server()
+					field_states = self.recive_data_from_server()
+					for s in field_states:
+						print(s)
+					self.game_screen.define_fields(field_states)
+
+					#recive data
+					#game_screen.define
+					self.screen_manager.current = "game_screen"
+					self.game_screen.field_events("start")
+
+
+			elif event == Core.p_field.botarrange:
+				pass
 
 			elif event == Core.p_field.back:
 				if self.isTwoPlayers:
@@ -120,6 +184,8 @@ class Program(App):
 					self.prepare_screen.cleen()
 
 
+		elif screen == Core.GameField:
+			pass
 
 
 
@@ -129,6 +195,22 @@ class Program(App):
 
 
 
+
+'''	if not self.isFirstArranged:
+					self.isFirstArranged = True
+					#work with server
+					if self.isTwoPlayers:
+						self.prepare_screen.clean()
+						#data+
+					else:
+						#data+
+						#send
+						#go to gamefield
+				else:
+					#it is mean there is two players
+					#some work with server
+					#change_screen to game_screen
+					pass'''
 
 
 

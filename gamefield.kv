@@ -1,0 +1,8 @@
+GameField:
+	id: game_field
+	size:800,600
+	Button:
+		size:400,100
+		pos:0,0
+		text:"End Battle"
+		on_release:game_field.events_callback(Core.GameField , Core.game_field.end_battle)

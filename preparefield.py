@@ -48,6 +48,12 @@ class Prepare(Widget):
 
 
 	def set_default(self):
+		try:
+			self.remove_widget(self.field)
+			self.remove_widget(self.ship_set)
+		except:
+			pass
+
 		self.field = PraparationField()
 		self.field.pos = (0,100)
 		self.field.size = (500,500)
@@ -74,36 +80,30 @@ class Prepare(Widget):
 
 	def check_rules(self):
 		check_arrange = 0
-		for y in range(0,10):
-			for x in range(0,10):				
-				cell = self.field.children[99 - x - y*10]
+
+		for cell in self.field.children:				
 				if cell._state == CellState.ship:
 					check_arrange+=1
-					self.field_states[9 - x][y] = 1
-				else:
-					self.field_states[9 - x][y] = 0
-				
-
+			
+		if check_arrange != 20:
+			return False
 
 		self.data = ""
-		for y in range(0,10):
-			for x in range(0,10):				
-				self.data+=str(self.field_states[y][x])
-
-
-		if check_arrange < 20:
-			return False
+		top_x = 0
+		top_y = 0
+		bot_x = 0
+		bot_y = 0
 
 		for ship in self.ship_set.children:
 			if ship.collide:
 				return False
-		return True
+			top_x = int(ship.pos[0]//50)
+			bot_y = int(9 - (ship.pos[1] - 100)//50)
+			bot_x = int(top_x + (ship.size[0]//50) - 1)
+			top_y = int((bot_y - (ship.size[1]//50 - 1)))
+			self.data+=(chr(top_x) + chr(top_y) + chr(bot_x) + chr(bot_y))
 
-		
-		'''for y in range(0,10):
-			for x in range(0,10):
-				print(self.field_states[y][x],end="")
-			print('\n')'''
+		return True
 			
 
 
@@ -145,7 +145,7 @@ class Ship(Button):
 		self.collide = False
 		#self.bind(on_touch_up=PraparationField.find_ship_pos)
 		self.counter = 0
-
+	
 
 	def on_touch_down(self, touch):
 		if self.collide_point(touch.x , touch.y):
