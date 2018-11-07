@@ -45,17 +45,9 @@ class Program(App):
 
 		self.type_menu = GameTypeMenu(events_callback=self.events_program)
 
-		self.prepare_screen = PrepareScreen(events_callback=self.events_program)
-
-		self.game_screen = GameFieldScreen(events_callback=self.events_program)
-
-
 		self.screen_manager.add_widget(self.start_menu)
 		self.screen_manager.add_widget(self.type_menu)
-		self.screen_manager.add_widget(self.prepare_screen)
-		self.screen_manager.add_widget(self.game_screen)
-
-
+		self.init_game()
 
 		#game type variables
 		self.isTwoPlayers = False
@@ -65,6 +57,18 @@ class Program(App):
 		return self.screen_manager
 
 
+	def end_game(self):
+		self.screen_manager.remove_widget(self.prepare_screen)
+		self.screen_manager.remove_widget(self.game_screen)
+
+
+	def init_game(self):
+		self.prepare_screen = PrepareScreen(events_callback=self.events_program)
+		self.game_screen = GameFieldScreen(events_callback=self.events_program)
+
+		self.screen_manager.add_widget(self.prepare_screen)
+		self.screen_manager.add_widget(self.game_screen)
+
 	def send_data_to_server(self):
 		try:
 			msg = self.message_data
@@ -72,6 +76,8 @@ class Program(App):
 			self.data_socket.connect(('localhost' , Core.client.port))
 			self.data_socket.send(bytes( msg, encoding = 'utf-8'))
 			
+			self.message_data = None
+
 		except ConnectionRefusedError:
 			print("Connectio Error")
 
@@ -98,9 +104,13 @@ class Program(App):
 		if screen == Core.StartMenu:
 			if event == Core.start_menu.play:
 				self.screen_manager.current = "type_menu"
+				self.message_data = "s"
+				self.send_data_to_server()#start prepare_stage
 			elif event == Core.start_menu.tools:
 				pass
 			else:
+				self.message_data = "e"
+				self.send_data_to_server()
 				sys.exit(0)
 
 
@@ -185,7 +195,14 @@ class Program(App):
 
 
 		elif screen == Core.GameField:
-			pass
+			if event == Core.game_field.end_battle:
+				#show winner(screen)
+				self.screen_manager.current = "start_menu"
+				self.end_game()
+				self.init_game()
+				
+
+
 
 
 

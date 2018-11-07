@@ -102,7 +102,7 @@ class Prepare(Widget):
 			bot_x = int(top_x + (ship.size[0]//50) - 1)
 			top_y = int((bot_y - (ship.size[1]//50 - 1)))
 			self.data+=(chr(top_x) + chr(top_y) + chr(bot_x) + chr(bot_y))
-
+			
 		return True
 			
 

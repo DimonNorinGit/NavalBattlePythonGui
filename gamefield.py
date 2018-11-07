@@ -9,13 +9,15 @@ from programdata import Core
 
 import socket
 
-
+from kivy.graphics import Color, Rectangle
 
 from kivy.properties import ObjectProperty
 from kivy.uix.screenmanager import Screen
 from kivy.lang import Builder
 
 
+
+field_delay = 1
 
 class Colors():
 	broken_cell = [0.2 ,0.1 , 0.2 , 0.7]
@@ -32,6 +34,8 @@ class GameFieldScreen(Screen):
 		self.right_player = None
 
 		self.data_socket = None
+		self.isGameEnd = False
+
 		#self.data_socket = socket.socket()
 		#self.data_socket.connect(('localhost' , Core.client.port))
 		#self.data_socket.send(bytes( msg, encoding = 'utf-8'))
@@ -44,11 +48,12 @@ class GameFieldScreen(Screen):
 
 
 	def create_field(self , player_type ,  field_states , diff):
-		if player_type == "h":
-			field = GameField(self , FieldCell)#Builder.load_file("gamefield.kv")
-		else:
-			field = GameField(self, DisableCell)
+		isActiveField = True
+		if player_type != "h":
+			isActiveField = False
+		
 
+		field = GameField(self, isActiveField)
 
 		field.events_callback = self.events_callback
 
@@ -58,7 +63,7 @@ class GameFieldScreen(Screen):
 			x = field_states[2 * two_bytes]
 			y = field_states[2 * two_bytes + 1]
 			cell = field.game_cells.children[99 -((9-y) * 10) - x]
-			cell.background_color = Colors.ship_color
+			#cell.background_color = Colors.ship_color
 			cell._state = CellState.ship
 		return field
 
@@ -81,6 +86,8 @@ class GameFieldScreen(Screen):
 		self.current_field = self.left_field
 		self.previos_field = self.right_field
 
+		
+
 		self.add_widget(self.left_field)
 
 
@@ -99,21 +106,29 @@ class GameFieldScreen(Screen):
 		return data
 
 	def do_event(self , data):
-		game_state = data[0]
+		game_state = chr(data[0])
+		ship_state = chr(data[1])
+
 		cells_count = data[5]
 		shot_x = data[3]
 		shot_y = data[4]
-		ship_state = data[1]
+		
+
 		self.current_field.set_cell((shot_x , shot_y) , ship_state)
 		
-		print("\n")
-		print(cells_count)
+		if game_state == "e":
+			self.isGameEnd = True
 
 		if cells_count != 0:
 			self.current_field.fill_cells(data[6:6 + cells_count * 2])
+		print(ship_state)
 
+		if ship_state != "m":#miss
+			return True
 
-	def change_field(self):
+		return False
+
+	def change_field(self , instanse=0):
 		self.remove_widget(self.current_field)
 		self.add_widget(self.previos_field)
 
@@ -123,52 +138,65 @@ class GameFieldScreen(Screen):
 		self.previos_field , self.current_field =\
 		self.current_field , self.previos_field
 
+		if self.previos_player != "b":
+			self.previos_field.isActive = True
+
 
 
 	def field_events(self , event="bot"):
 		if event == "end":
 			pass
 
-		if self.current_player == "b":#если бот
-			self.send_data_to_server("c")#continue game
-			data = self.recive_data_from_server()
-			self.do_event(data)
+		isExtraShot = False
+		
+		if event == "start" and self.current_player != "b":
+			return
+		event = str(event)
+		self.send_data_to_server(event)#continue game
 
-			if self.previos_player == "b":
-				Clock.schedule_once(self.field_events , 10)
+		print("recive start")
+		data = self.recive_data_from_server()
+		print("recive")
+		isExtraShot = self.do_event(data)
 
-			self.change_field()
+
+		if self.isGameEnd:
+			self.events_callback(Core.GameField , Core.game_field.end_battle)
 		else:
-			if event == "start":
-				return
+			if self.current_player == "h" and not isExtraShot:
+				if self.previos_player == "b":
+					Clock.schedule_once(self.field_events , field_delay*2)
+				Clock.schedule_once(self.change_field , field_delay)
 
-			self.send_data_to_server(event)#continue game
-			data = self.recive_data_from_server()
-			self.do_event(data)
-
-			if self.previos_player == "b":
-				Clock.schedule_once(self.field_events , 10)
-				
-			self.change_field()
-
-		#self.remove_widget(self.right_field)
-		#self.add_widget(self.left_field)
-
-		#self.left_field , self.right_field =\
-		#self.right_field , self.left_field
+			elif self.current_player == "b":
+				if isExtraShot:
+					Clock.schedule_once(self.field_events , field_delay)
+				else:
+					if self.previos_player == "b":
+						Clock.schedule_once(self.field_events , field_delay*2)
+					Clock.schedule_once(self.change_field , field_delay)
 
 
 
-class DisableCell(Label):
+'''class DisableCell(Label):
 	def __init__(self , **kwargs):
 		super(DisableCell , self).__init__(**kwargs)
 		self._state = CellState.clear
-		self.background_color = [1, 0.2 , 0.4 , 1]
+		self.background_color = ObjectProperty()
+		#self.on_background_color(Colors.default_cell)
+
+
+	def on_background_color(self , value):
+		with self.canvas:
+			x_color = self.size[0] - 1
+			y_color = self.size[1] - 1
+			Color(*value)
+			Rectangle(pos=self.pos, size=(x_color, y_color))'''
 
 
 
 class GameField(Widget):
-	def __init__(self , root_screen ,  CellType , **kvargs):
+	def __init__(self , root_screen ,  isActive , **kvargs):
 		self.events_callback = ObjectProperty(None)
 		
 		self.size = 800,600
@@ -178,8 +206,8 @@ class GameField(Widget):
 		self.add_widget(endButton)'''
 
 		super(GameField , self).__init__(**kvargs)
-		self.game_cells = GameCells(root_screen , CellType)
-	
+		self.game_cells = GameCells(root_screen , self)
+		self.isActive = isActive
 
 		self.game_cells.pos = (0,100)
 		self.game_cells.size = (500,500)
@@ -191,9 +219,11 @@ class GameField(Widget):
 		cell = self.game_cells.children[99 -((9-y) * 10) - x]
 		if ship_state == "m":# промах
 			cell._state = CellState.used
+			cell.background_color = Colors.broken_cell
 			#change color
 		else:
 			cell_state = CellState.hit
+			cell.background_color = Colors.broken_ship
 			#change color
 
 	def fill_cells(self , cells_pos):
@@ -246,18 +276,19 @@ class FieldCell(Button):
 		super(FieldCell , self).__init__(**kwargs)
 		self._state = CellState.clear
 		self.root_screen = None
-
+		self.isActive = True
 
 	def on_touch_down(self, touch):
-		if self.collide_point(touch.x , touch.y):
+		if self.collide_point(touch.x , touch.y)\
+			and self.root.isActive:
+
 			pos_x = int(self.pos[0]//50)
 			pos_y = int(9 - (self.pos[1] - 100)//50)
-			cell_pos = ''
+			cell_pos = ""
 			if self._state == CellState.clear:
-				self.background_color = Colors.broken_cell
 				cell_pos = chr(pos_x) + chr(pos_y)
+				self.root.isActive = False
 			elif self._state == CellState.ship:
-				self.background_color = Colors.broken_ship
 				cell_pos = chr(pos_x) + chr(pos_y)
 			else:
 				pass
@@ -272,12 +303,15 @@ class FieldCell(Button):
 	
 
 class GameCells(Widget):
-	def __init__(self , root_screen ,  CellType , **kwargs):
+	def __init__(self , root_screen , root , **kwargs):
 		super(GameCells , self).__init__(**kwargs)
 		for y_pos in range(0,10):
 			for x_pos in range(0,10):
-				cell  = CellType(pos=(50 * x_pos , 100 + 50 * y_pos) ,\
+				cell  = FieldCell(pos=(50 * x_pos , 100 + 50 * y_pos) ,\
 				size=(50 , 50))
+
+				cell.root = root
+
 				cell.background_color = Colors.default_cell
 
 				cell.name = str(x_pos) + str(y_pos)
